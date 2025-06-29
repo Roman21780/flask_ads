@@ -1,0 +1,70 @@
+# Исключаем временные файлы операционной системы
+.DS_Store
+Thumbs.db
+
+# Исключаем Python-файлы
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Исключаем локальные переменные окружения
+.env
+.flaskenv
+
+# Исключаем базу данных SQLite
+*.db
+*.sqlite3
+
+# Исключаем директории для миграций Alembic
+migrations/
+
+# Исключаем файлы зависимостей
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Исключаем собранные пакеты Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Исключаем логи и кэш
+*.log
+*.lock
+.cache/
+.hypothesis/
+
+# Исключаем IDE-файлы
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Исключаем тестовые файлы или отчёты
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+nosetests.xml
+pytest.xml
+test-results/
+
+# Исключаем конфигурационные файлы с секретами
+config.py
+secrets.json
