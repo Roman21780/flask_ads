@@ -1,0 +1,48 @@
+### Регистрация нового пользователя (POST)
+POST http://127.0.0.1:5000/api/register
+Content-Type: application/json
+
+{
+  "email": "user2@example.com",
+  "password": "password456"
+}
+
+### Авторизация пользователя и получение токена (POST)
+# Используйте этот запрос для получения токена, который будет использоваться в последующих запросах.
+POST http://127.0.0.1:5000/api/login
+Content-Type: application/json
+
+{
+  "email": "user2@example.com",
+  "password": "password456"
+}
+
+### Создание объявления (POST)
+# Замените <token> на токен, полученный в предыдущем запросе.
+POST http://127.0.0.1:5000/api/advertisements
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTEyOTY4NTF9.iY03wi89W99-l-nHrhunJlVc6NN1__Z_ObsJfJrifsk
+Content-Type: application/json
+
+{
+  "title": "Sell car2",
+  "description": "Selling a black car"
+}
+
+### Получение объявления по ID (GET)
+GET http://127.0.0.1:5000/api/advertisements/4
+
+### Обновление объявления (PUT)
+# Замените <token> на токен, полученный при авторизации.
+PUT http://127.0.0.1:5000/api/advertisements/4
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTEyOTY4NTF9.iY03wi89W99-l-nHrhunJlVc6NN1__Z_ObsJfJrifsk
+Content-Type: application/json
+
+{
+  "title": "Sell blue car",
+  "description": "Selling a blue car with low mileage"
+}
+
+### Удаление объявления (DELETE)
+# Замените <token> на токен, полученный при авторизации.
+DELETE http://127.0.0.1:5000/api/advertisements/4
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTEyOTY4NTF9.iY03wi89W99-l-nHrhunJlVc6NN1__Z_ObsJfJrifsk
