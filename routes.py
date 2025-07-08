@@ -1,99 +1,144 @@
-import jwt
-from flask import Blueprint, request, jsonify
-from models import db, Advertisement, User
-from auth import login_required, get_user_by_token
-from datetime import datetime, timedelta, timezone
-from config import Config
+from aiohttp import web
+from sqlalchemy import select
+from database import db
+from models import User, Advertisement
+from auth import generate_token
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-api_bp = Blueprint('api', __name__)
+def setup_routes(app):
+    app.router.add_post('/api/register', register)
+    app.router.add_post('/api/login', login)
+    app.router.add_post('/api/advertisements', create_advertisement)
+    app.router.add_get('/api/advertisements/{ad_id}', get_advertisement)
+    app.router.add_put('/api/advertisements/{ad_id}', update_advertisement)
+    app.router.add_delete('/api/advertisements/{ad_id}', delete_advertisement)
 
 
-# Регистрация пользователя
-@api_bp.route('/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+async def register(request):
+    try:
+        data = await request.json()
+        email = data.get('email')
+        password = data.get('password')
 
-    if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'Email already registered'}), 409
+        if not email or not password:
+            return web.json_response({'error': 'Email and password required'}, status=400)
 
-    new_user = User(email=email)
-    new_user.set_password(password)
-    db.session.add(new_user)
-    db.session.commit()
+        async with await db.get_session() as session:
+            # Используем select для проверки существующего пользователя
+            existing_user = await session.execute(
+                select(User).where(User.email == email)
+            )
+            if existing_user.scalar_one_or_none():
+                return web.json_response({'error': 'Email already registered'}, status=409)
 
-    return jsonify({'message': 'User registered successfully'}), 201
+            new_user = User(email=email)
+            new_user.set_password(password)
+            session.add(new_user)
+            await session.commit()
 
+        return web.json_response({'message': 'User registered successfully'}, status=201)
 
-# Авторизация пользователя
-@api_bp.route('/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-
-    user = User.query.filter_by(email=email).first()
-    if not user or not user.check_password(password):
-        return jsonify({'error': 'Invalid credentials'}), 401
-
-    # Генерация JWT-токена
-    token = jwt.encode({
-        'user_id': user.id,
-        'exp': datetime.now(timezone.utc) + timedelta(hours=1) # время жизни токена
-    }, Config.SECRET_KEY, algorithm='HS256')
-
-    return jsonify({'token': token}), 200
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}")
+        return web.json_response({'error': 'Internal server error'}, status=500)
 
 
-@api_bp.route('/advertisements', methods=['POST'])
-@login_required
-def create_advertisement(current_user):
-    data = request.get_json()
-    new_ad = Advertisement(
-        title=data['title'],
-        description=data['description'],
-        owner_id=current_user.id
-    )
-    db.session.add(new_ad)
-    db.session.commit()
-    return jsonify({'message': 'Advertisement created', 'id': new_ad.id}), 201
+async def login(request):
+    try:
+        data = await request.json()
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return web.json_response({'error': 'Email and password required'}, status=400)
+
+        async with await db.get_session() as session:
+            # Используем select для поиска пользователя
+            result = await session.execute(
+                select(User).where(User.email == email)
+            )
+            user = result.scalar_one_or_none()
+
+            if not user or not user.check_password(password):
+                return web.json_response({'error': 'Invalid credentials'}, status=401)
+
+            token = await generate_token(user.id)
+            return web.json_response({'token': token})
+
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        return web.json_response({'error': 'Internal server error'}, status=500)
 
 
-@api_bp.route('/advertisements/<int:ad_id>', methods=['GET'])
-def get_advertisements(ad_id):
-    ad = Advertisement.query.get_or_404(ad_id)
-    return jsonify({
+async def create_advertisement(request):
+    data = await request.json()
+    current_user = request['current_user']
+
+    async with await db.get_session() as session:
+        new_ad = Advertisement(
+            title=data['title'],
+            description=data['description'],
+            owner_id=current_user.id
+        )
+        session.add(new_ad)
+        await session.commit()
+
+    return web.json_response({'message': 'Advertisement created', 'id': new_ad.id}, status=201)
+
+
+async def get_advertisement(request):
+    ad_id = int(request.match_info['ad_id'])
+
+    async with await db.get_session() as session:
+        ad = await session.get(Advertisement, ad_id)
+        if not ad:
+            raise web.HTTPNotFound()
+
+    return web.json_response({
         'id': ad.id,
         'title': ad.title,
         'description': ad.description,
-        'created_at': ad.created_at,
+        'created_at': ad.created_at.isoformat(),
         'owner_id': ad.owner_id
     })
 
 
-@api_bp.route('/advertisements/<int:ad_id>', methods=['PUT'])
-@login_required
-def update_advertisement(ad_id, current_user):
-    ad = Advertisement.query.get_or_404(ad_id)
-    if ad.owner_id != current_user.id:
-        return jsonify({'error': 'Permission denied'}), 403
+async def update_advertisement(request):
+    ad_id = int(request.match_info['ad_id'])
+    current_user = request['current_user']
+    data = await request.json()
 
-    data = request.get_json()
-    ad.title = data.get('title', ad.title)
-    ad.description = data.get('description', ad.description)
-    db.session.commit()
-    return jsonify({'message': 'Advertisement updated'})
+    async with await db.get_session() as session:
+        ad = await session.get(Advertisement, ad_id)
+        if not ad:
+            raise web.HTTPNotFound()
+
+        if ad.owner_id != current_user.id:
+            return web.json_response({'error': 'Permission denied'}, status=403)
+
+        ad.title = data.get('title', ad.title)
+        ad.description = data.get('description', ad.description)
+        await session.commit()
+
+    return web.json_response({'message': 'Advertisement updated'})
 
 
-@api_bp.route('/advertisements/<int:ad_id>', methods=['DELETE'])
-@login_required
-def delete_advertisement(ad_id, current_user):
-    ad = Advertisement.query.get_or_404(ad_id)
-    if ad.owner_id != current_user.id:
-        return jsonify({'error': 'Permission denied'}), 403
+async def delete_advertisement(request):
+    ad_id = int(request.match_info['ad_id'])
+    current_user = request['current_user']
 
-    db.session.delete(ad)
-    db.session.commit()
-    return jsonify({'message': 'Advertisement deleted'})
+    async with await db.get_session() as session:
+        ad = await session.get(Advertisement, ad_id)
+        if not ad:
+            raise web.HTTPNotFound()
+
+        if ad.owner_id != current_user.id:
+            return web.json_response({'error': 'Permission denied'}, status=403)
+
+        await session.delete(ad)
+        await session.commit()
+
+    return web.json_response({'message': 'Advertisement deleted'})

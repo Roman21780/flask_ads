@@ -1,60 +1,46 @@
-from functools import wraps
-from flask import request, jsonify
-from models import User
+from aiohttp import web
 import jwt
-from config import Config
+from datetime import datetime, timedelta, timezone
+from database import db  # Импортируем глобальный экземпляр
+from models import User
+import os
 
-SECRET_KEY = Config.SECRET_KEY
-
-
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'Token is missing'}), 401
-        try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-            current_user = User.query.get(data['user_id'])
-        except:
-            return jsonify({'error': 'Invalid token'}), 401
-        return f(current_user, *args, **kwargs)
-
-    return decorated
+SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
 
 
-def login_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'Authentication required'}), 401
-        try:
-            # Убираем префикс "Bearer " из токена
-            if token.startswith('Bearer '):
-                token = token.split(' ')[1]
+@web.middleware
+async def auth_middleware(request, handler):
+    # Разрешаем доступ без токена к этим эндпоинтам
+    if request.path in ['/api/register', '/api/login']:
+        return await handler(request)
 
-            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-            current_user = User.query.get(data['user_id'])
-            if not current_user:
-                return jsonify({'error': 'User not found'}), 401
-        except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token has expired'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token'}), 401
+    # Для всех остальных запросов проверяем токен
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return web.json_response({'error': 'Token is missing'}, status=401)
 
-        return f(current_user=current_user, *args, **kwargs)
-
-    return decorated
-
-
-def get_user_by_token(token):
     try:
-        # Убираем префикс "Bearer" из токена
-        if token.startswith('Bearer '):
-            token = token.split(' ')[1]
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+        else:
+            token = auth_header
 
         data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        return User.query.get(data['user_id'])
-    except:
-        return None
+        async with await db.get_session() as session:
+            current_user = await session.get(User, data['user_id'])
+            if not current_user:
+                return web.json_response({'error': 'User not found'}, status=401)
+
+        request['current_user'] = current_user
+    except jwt.ExpiredSignatureError:
+        return web.json_response({'error': 'Token has expired'}, status=401)
+    except jwt.InvalidTokenError:
+        return web.json_response({'error': 'Invalid token'}, status=401)
+
+    return await handler(request)
+
+async def generate_token(user_id):
+    return jwt.encode({
+        'user_id': user_id,
+        'exp': datetime.now(timezone.utc) + timedelta(hours=1),
+    }, SECRET_KEY, algorithm='HS256')

@@ -1,13 +1,16 @@
-from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from werkzeug.security import generate_password_hash, check_password_hash
+from database import Base
 
-db = SQLAlchemy()
 
+class User(Base):
+    __tablename__ = 'users'
 
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    id = Column(Integer, primary_key=True)
+    email = Column(String(120), unique=True, nullable=False)
+    password_hash = Column(String(128), nullable=False)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -16,11 +19,13 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
 
-class Advertisement(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+class Advertisement(Base):
+    __tablename__ = 'advertisements'
 
-    owner = db.relationship('User', backref=db.backref('advertisements', lazy=True))
+    id = Column(Integer, primary_key=True)
+    title = Column(String(100), nullable=False)
+    description = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    owner = relationship('User', backref='advertisements')

@@ -3,8 +3,8 @@ POST http://127.0.0.1:5000/api/register
 Content-Type: application/json
 
 {
-  "email": "user2@example.com",
-  "password": "password456"
+  "email": "user3@example.com",
+  "password": "password789"
 }
 
 ### Авторизация пользователя и получение токена (POST)
@@ -13,36 +13,37 @@ POST http://127.0.0.1:5000/api/login
 Content-Type: application/json
 
 {
-  "email": "user2@example.com",
-  "password": "password456"
+  "email": "user3@example.com",
+  "password": "password789"
 }
 
 ### Создание объявления (POST)
 # Замените <token> на токен, полученный в предыдущем запросе.
 POST http://127.0.0.1:5000/api/advertisements
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTEyOTY4NTF9.iY03wi89W99-l-nHrhunJlVc6NN1__Z_ObsJfJrifsk
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTE5NjU2MjF9.1rRi0ENKmJhEdeGarztdiEnCSi5J4kCvk3grpDfKi50
 Content-Type: application/json
 
 {
-  "title": "Sell car2",
-  "description": "Selling a black car"
+  "title": "Sell car5",
+  "description": "Selling a pink car"
 }
 
 ### Получение объявления по ID (GET)
-GET http://127.0.0.1:5000/api/advertisements/4
+GET http://127.0.0.1:5000/api/advertisements/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTE5NjU2MjF9.1rRi0ENKmJhEdeGarztdiEnCSi5J4kCvk3grpDfKi50
 
 ### Обновление объявления (PUT)
 # Замените <token> на токен, полученный при авторизации.
-PUT http://127.0.0.1:5000/api/advertisements/4
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTEyOTY4NTF9.iY03wi89W99-l-nHrhunJlVc6NN1__Z_ObsJfJrifsk
+PUT http://127.0.0.1:5000/api/advertisements/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTE5NjU2MjF9.1rRi0ENKmJhEdeGarztdiEnCSi5J4kCvk3grpDfKi50
 Content-Type: application/json
 
 {
-  "title": "Sell blue car",
-  "description": "Selling a blue car with low mileage"
+  "title": "Sell blueblue car",
+  "description": "Selling a blue car with up mileage"
 }
 
 ### Удаление объявления (DELETE)
 # Замените <token> на токен, полученный при авторизации.
-DELETE http://127.0.0.1:5000/api/advertisements/4
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTEyOTY4NTF9.iY03wi89W99-l-nHrhunJlVc6NN1__Z_ObsJfJrifsk
+DELETE http://127.0.0.1:5000/api/advertisements/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NTE5NjU2MjF9.1rRi0ENKmJhEdeGarztdiEnCSi5J4kCvk3grpDfKi50
